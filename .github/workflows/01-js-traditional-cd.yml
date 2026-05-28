@@ -1,0 +1,85 @@
+# =============================================================================
+# Pipeline CI — JavaScript (Node.js/Express)
+# Archivo: 01-js-traditional-cd.yml
+#
+# PUNTO PEDAGÓGICO CLAVE:
+# Compara este archivo con 03-java-traditional-cd.yml.
+# La estructura es IDÉNTICA. Solo cambian dos cosas:
+#   1. La acción de setup del runtime (setup-node vs setup-java)
+#   2. Los comandos de instalación y prueba (npm vs mvn)
+#
+# Esto demuestra que el proceso de Integración Continua es universal:
+# no importa el lenguaje, el patrón siempre es el mismo.
+# =============================================================================
+
+# Nombre del pipeline — aparece en la pestaña "Actions" de GitHub
+name: "CI — JavaScript App (Flujo Tradicional)"
+
+# ---------------------------------------------------------------------------
+# TRIGGER: ¿Cuándo se activa este pipeline?
+# Se activa en cada push, pero SOLO si los cambios afectan archivos dentro
+# de la carpeta de la aplicación JavaScript.
+# Esto evita que un cambio en la app Python o Java dispare este pipeline.
+# (Mismo patrón que el Pipeline Java — solo cambia la ruta)
+# ---------------------------------------------------------------------------
+on:
+  push:
+    paths:
+      - "01-traditional-flow/javascript-app/**"
+
+# ---------------------------------------------------------------------------
+# JOBS: Unidades de trabajo del pipeline
+# ---------------------------------------------------------------------------
+jobs:
+
+  # Nombre del job — aparece en la interfaz de GitHub Actions
+  # (Idéntico al Pipeline Java: "control-de-calidad")
+  control-de-calidad:
+
+    # RUNNER: Máquina virtual donde se ejecuta el pipeline
+    # ubuntu-latest es el estándar para proyectos Node.js, Python y Java.
+    # (Mismo runner que el Pipeline Java)
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # -----------------------------------------------------------------------
+      # PASO 1: Checkout del código
+      # Descarga el código del repositorio en el runner.
+      # Este paso es IDÉNTICO en todos los pipelines — Java, Python y JS.
+      # -----------------------------------------------------------------------
+      - name: "Checkout del código"
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # PASO 2: Configurar el runtime — Node.js 20
+      # AQUÍ está la única diferencia con el Pipeline Java:
+      #   - Java usa:  actions/setup-java@v4  con java-version: '17'
+      #   - JS usa:    actions/setup-node@v4  con node-version: '20'
+      # El concepto es el mismo: preparar el entorno de ejecución.
+      # -----------------------------------------------------------------------
+      - name: "Configurar Node.js 20"
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # -----------------------------------------------------------------------
+      # PASO 3: Instalar dependencias
+      # Descarga las librerías definidas en package.json (Express, Jest, Supertest).
+      # Equivalente a `mvn dependency:resolve` en el Pipeline Java.
+      # El flag --prefix indica la ruta de la app dentro del monorepo.
+      # -----------------------------------------------------------------------
+      - name: "Instalar dependencias"
+        run: npm install --prefix 01-traditional-flow/javascript-app
+
+      # -----------------------------------------------------------------------
+      # PASO 4: Ejecutar pruebas
+      # Corre Jest, que ejecuta los tests en test/app.test.js.
+      # Si todas las pruebas pasan → código de salida 0 → ✅ Check Verde en GitHub.
+      # Si alguna prueba falla  → código de salida 1 → ❌ Indicador de fallo.
+      #
+      # Equivalente a `mvn clean test` en el Pipeline Java.
+      # El flag --prefix indica la ruta de la app dentro del monorepo.
+      # -----------------------------------------------------------------------
+      - name: "Ejecutar pruebas"
+        run: npm test --prefix 01-traditional-flow/javascript-app

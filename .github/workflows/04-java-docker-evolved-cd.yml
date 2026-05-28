@@ -1,0 +1,107 @@
+# =============================================================================
+# PIPELINE 04 — Flujo Evolucionado con Docker
+# Charla: Despliegue 101 - Por Andrea Rosero
+#
+# ¿Qué hace este pipeline?
+# Valida que la imagen Docker de la aplicación Java se construye correctamente.
+# Si `docker build` termina sin errores, el pipeline produce un Check_Verde ✅.
+#
+# DIFERENCIA CLAVE con los pipelines tradicionales (01, 02, 03):
+#
+#   Flujo tradicional:
+#     1. El runner instala el runtime (Java, Node.js, Python)
+#     2. El runner instala las dependencias del proyecto
+#     3. El runner ejecuta las pruebas
+#   → El entorno de ejecución vive en el RUNNER de GitHub Actions.
+#
+#   Flujo con Docker:
+#     1. El runner ejecuta `docker build`
+#     2. Docker descarga la imagen base (que ya incluye el JDK y Maven)
+#     3. Docker compila el proyecto y genera el JAR dentro del contenedor
+#   → El entorno de ejecución vive DENTRO DE LA IMAGEN Docker.
+#
+# Esta diferencia conceptual es el corazón de la containerización:
+# la aplicación lleva consigo todo lo que necesita para ejecutarse.
+# =============================================================================
+
+name: 04 - Java Docker - Control de Calidad
+
+# -----------------------------------------------------------------------------
+# TRIGGER: ¿Cuándo se activa este pipeline?
+#
+# Se activa con cada `push` que modifique archivos dentro de la carpeta
+# `02-docker-flow/java-docker-app/`. Esto incluye cambios en el código Java,
+# el pom.xml o el propio Dockerfile.
+#
+# Si el push no toca esa carpeta (por ejemplo, solo cambia el README),
+# este pipeline NO se activa. Esto evita ejecuciones innecesarias.
+# -----------------------------------------------------------------------------
+on:
+  push:
+    paths:
+      - '02-docker-flow/java-docker-app/**'
+
+# -----------------------------------------------------------------------------
+# JOBS: Las unidades de trabajo del pipeline
+# -----------------------------------------------------------------------------
+jobs:
+
+  # ---------------------------------------------------------------------------
+  # JOB: control-de-calidad
+  #
+  # Nombre consistente con los otros tres pipelines del repositorio.
+  # Todos los pipelines usan el mismo nombre de job para que la audiencia
+  # vea que el patrón es idéntico independientemente de la tecnología.
+  # ---------------------------------------------------------------------------
+  control-de-calidad:
+
+    # -------------------------------------------------------------------------
+    # RUNNER: ubuntu-latest
+    #
+    # GitHub Actions proporciona este runner con Docker preinstalado.
+    # A diferencia de los pipelines tradicionales, aquí NO necesitamos
+    # instalar Java ni Maven manualmente — Docker los trae consigo dentro
+    # de la imagen base `maven:3.9-eclipse-temurin-17` definida en el
+    # Dockerfile. El runner solo necesita saber ejecutar `docker build`.
+    # -------------------------------------------------------------------------
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # -----------------------------------------------------------------------
+      # PASO 1: Checkout del código
+      #
+      # Descarga el contenido del repositorio en el runner para que los
+      # pasos siguientes puedan acceder a los archivos del proyecto.
+      # Este paso es idéntico en los cuatro pipelines del repositorio.
+      # -----------------------------------------------------------------------
+      - name: Obtener el código del repositorio
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # PASO 2: Construir la imagen Docker
+      #
+      # NOTA: ¿Por qué no hay un paso `setup-java` aquí?
+      #
+      # En los pipelines tradicionales (03-java-traditional-cd.yml) necesitamos
+      # `actions/setup-java@v4` porque el runner debe tener Java instalado para
+      # poder ejecutar `mvn clean test` directamente.
+      #
+      # En este pipeline Docker, ese paso NO es necesario porque:
+      #   - El Dockerfile define `FROM maven:3.9-eclipse-temurin-17` en su
+      #     primera etapa (build). Esa imagen ya incluye el JDK 17 y Maven 3.9.
+      #   - Docker descarga y usa esa imagen automáticamente durante el build.
+      #   - El runner de GitHub Actions solo necesita Docker instalado
+      #     (que ya viene preinstalado en ubuntu-latest).
+      #
+      # En otras palabras: `docker build` reemplaza a los pasos de
+      # "instalar Java" + "instalar dependencias" + "ejecutar pruebas"
+      # porque todo eso ocurre DENTRO del proceso de construcción de la imagen,
+      # tal como está definido en el Dockerfile multi-etapa.
+      #
+      # Si el Dockerfile falla en cualquier instrucción (RUN mvn package,
+      # COPY, etc.), `docker build` retorna un código de salida distinto de 0
+      # y este step falla, produciendo un indicador de fallo ❌ en GitHub.
+      # -----------------------------------------------------------------------
+      - name: Construir imagen Docker
+        run: docker build ./02-docker-flow/java-docker-app

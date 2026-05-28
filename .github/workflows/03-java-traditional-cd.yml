@@ -1,0 +1,80 @@
+# =============================================================================
+# Pipeline: 03 - Java Traditional CD
+# =============================================================================
+# Propósito: Ejecutar las pruebas automatizadas de la aplicación Java/Spring Boot
+# cada vez que se realiza un push con cambios en la carpeta java-app/.
+#
+# Este pipeline es el corazón de la demostración de la charla "Despliegue 101".
+# Cuando todas las pruebas pasan, GitHub muestra un ✅ Check_Verde que confirma
+# que el código tiene calidad suficiente para ser desplegado.
+#
+# Fase 1 — Solo CI (Integración Continua): validación de calidad.
+# El despliegue en AWS EC2 queda para fases posteriores.
+# =============================================================================
+
+name: 03 - Java Traditional CD
+
+on:
+  push:
+    # Solo se activa cuando los cambios afectan archivos dentro de java-app/.
+    # Si el push modifica otro directorio (python-app/, javascript-app/, etc.),
+    # este pipeline NO se ejecuta. Así cada app tiene su propio ciclo de CI.
+    paths:
+      - '01-traditional-flow/java-app/**'
+
+jobs:
+  # El job se llama "control-de-calidad" para reflejar su propósito:
+  # verificar que el código cumple los estándares antes de cualquier despliegue.
+  control-de-calidad:
+    # GitHub Actions provee runners Ubuntu gratuitos con Java, Maven y más
+    # preinstalados. "ubuntu-latest" garantiza un entorno limpio y reproducible
+    # en cada ejecución.
+    runs-on: ubuntu-latest
+
+    steps:
+      # -----------------------------------------------------------------------
+      # Paso 1: Checkout del código
+      # -----------------------------------------------------------------------
+      # Este paso descarga el código fuente del repositorio en el runner.
+      # Sin este paso, los pasos siguientes no tendrían acceso a los archivos
+      # del proyecto (pom.xml, src/, test/, etc.).
+      # Es el primer paso obligatorio en prácticamente cualquier pipeline de CI.
+      - uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # Paso 2: Configurar Java 17
+      # -----------------------------------------------------------------------
+      # Instala y configura el JDK (Java Development Kit) versión 17 en el runner.
+      # - java-version: '17' → versión LTS requerida por Spring Boot 3.
+      # - distribution: 'temurin' → distribución de Eclipse Adoptium, la más
+      #   usada en entornos de CI por ser gratuita, estable y bien mantenida.
+      #
+      # Este paso garantiza que el entorno de compilación sea idéntico al de
+      # desarrollo local, eliminando el clásico problema "en mi máquina funciona".
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # -----------------------------------------------------------------------
+      # Paso 3: Ejecutar pruebas con Maven
+      # -----------------------------------------------------------------------
+      # Ejecuta el ciclo completo de Maven: limpia artefactos anteriores (clean)
+      # y luego compila el código y corre todas las pruebas (test).
+      #
+      # - mvn: herramienta de construcción estándar para proyectos Java.
+      # - -f: indica la ruta al pom.xml (necesario porque el runner ejecuta
+      #   comandos desde la raíz del repositorio, no desde java-app/).
+      # - clean: elimina la carpeta target/ para asegurar una compilación fresca.
+      # - test: compila el código fuente y de pruebas, luego ejecuta los tests.
+      #
+      # Si TODAS las pruebas pasan → este step termina con código 0 → el job
+      # "control-de-calidad" termina exitosamente → GitHub muestra el ✅ Check_Verde.
+      #
+      # Si AL MENOS UNA prueba falla → Maven retorna código distinto de 0 →
+      # el step falla → el job falla → GitHub muestra ❌ indicador de fallo.
+      #
+      # El Check_Verde es la señal visual que confirma que el código está listo.
+      - name: Ejecutar pruebas
+        run: mvn -f 01-traditional-flow/java-app/pom.xml clean test

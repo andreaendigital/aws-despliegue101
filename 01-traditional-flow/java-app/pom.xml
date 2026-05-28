@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+             https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        PARENT: spring-boot-starter-parent gestiona las versiones de todas las
+        dependencias de Spring Boot de forma centralizada. Así no necesitamos
+        especificar versiones individuales para cada dependencia de Spring.
+    -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.2.0</version>
+        <relativePath/> <!-- busca el parent en el repositorio Maven -->
+    </parent>
+
+    <!-- Coordenadas del proyecto -->
+    <groupId>com.andrea.devops</groupId>
+    <artifactId>java-app</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>java-app</name>
+    <description>Aplicación Java/Spring Boot para la charla Despliegue 101 - Por Andrea Rosero</description>
+
+    <properties>
+        <!--
+            Versión de Java: tanto para compilar el código fuente como para
+            generar el bytecode de destino. Debe coincidir con el JDK instalado
+            en el runner de GitHub Actions (actions/setup-java@v4 con Java 17).
+        -->
+        <java.version>17</java.version>
+    </properties>
+
+    <dependencies>
+        <!--
+            spring-boot-starter-web: incluye el servidor Tomcat embebido,
+            Spring MVC y Jackson (para serializar objetos Java a JSON).
+            Es la dependencia principal para exponer endpoints REST.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!--
+            spring-boot-starter-test: incluye JUnit 5, Mockito, AssertJ y
+            Spring Test (TestRestTemplate, MockMvc). Es la dependencia que
+            permite escribir los tests que producen el Check_Verde en GitHub Actions.
+            scope=test significa que solo se usa durante la fase de pruebas,
+            no se empaqueta en el JAR final.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!--
+                spring-boot-maven-plugin: permite empaquetar la aplicación como
+                un JAR ejecutable ("fat JAR") con todas las dependencias incluidas.
+                El comando `mvn package` genera el JAR en target/java-app-0.0.1-SNAPSHOT.jar.
+                El comando `mvn clean test` compila y ejecuta los tests sin generar el JAR.
+            -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

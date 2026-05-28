@@ -1,0 +1,116 @@
+# =============================================================================
+# Pipeline CI — Python App (Flujo Tradicional)
+# Archivo: 02-python-traditional-cd.yml
+#
+# PROPÓSITO EDUCATIVO
+# -------------------
+# Este pipeline es el equivalente Python del Pipeline_Java
+# (03-java-traditional-cd.yml). Compara ambos archivos lado a lado y
+# notarás que la estructura es IDÉNTICA:
+#
+#   Java                          Python
+#   ─────────────────────────     ─────────────────────────
+#   on: push / paths: java-app    on: push / paths: python-app
+#   runs-on: ubuntu-latest        runs-on: ubuntu-latest
+#   job: control-de-calidad       job: control-de-calidad
+#   checkout@v4                   checkout@v4
+#   setup-java@v4 (Java 17)       setup-python@v5 (Python 3.11)
+#   (sin paso de instalación)     pip install -r requirements.txt
+#   mvn clean test                pytest test/
+#
+# La única diferencia real es el runtime y el comando de pruebas.
+# El PATRÓN de CI es universal: instalar → probar → reportar.
+#
+# FASE 1 — Solo CI (Integración Continua)
+# ----------------------------------------
+# Este pipeline únicamente valida la calidad del código ejecutando las
+# pruebas automatizadas. El despliegue en AWS EC2 queda para fases
+# posteriores. Ver carpeta infra/ para los scripts de infraestructura.
+# =============================================================================
+
+# ── Disparador del pipeline ──────────────────────────────────────────────────
+# El pipeline se activa SOLO cuando hay un push que modifica archivos dentro
+# de la carpeta python-app/. Cambios en otras carpetas (java-app, javascript-app)
+# no disparan este workflow — cada app tiene su propio pipeline independiente.
+# Req. 8.3 — Pipeline_Python se activa con push en python-app/**
+on:
+  push:
+    paths:
+      - '01-traditional-flow/python-app/**'
+
+# ── Definición de jobs ───────────────────────────────────────────────────────
+# Un "job" es una unidad de trabajo que se ejecuta en un runner (máquina virtual).
+# Todos los steps de un job comparten el mismo sistema de archivos.
+jobs:
+
+  # El job se llama "control-de-calidad" — mismo nombre que en el Pipeline_Java.
+  # Esta consistencia de nombres facilita comparar los pipelines en la UI de GitHub.
+  # Req. 8.4 — Job llamado control-de-calidad en ubuntu-latest
+  control-de-calidad:
+    runs-on: ubuntu-latest  # Máquina virtual Linux proporcionada por GitHub Actions
+
+    steps:
+
+      # ── Step 1: Checkout ───────────────────────────────────────────────────
+      # Descarga el código del repositorio en el runner.
+      # Sin este paso, el runner no tiene acceso a ningún archivo del repo.
+      # Es SIEMPRE el primer step en cualquier pipeline — idéntico en Java,
+      # Python y JavaScript.
+      # Req. 8.4 — Paso checkout del código
+      - name: Obtener el código del repositorio
+        uses: actions/checkout@v4
+
+      # ── Step 2: Configurar Python ──────────────────────────────────────────
+      # Instala Python 3.11 en el runner y lo agrega al PATH.
+      # Equivalente a `actions/setup-java@v4` en el Pipeline_Java o
+      # `actions/setup-node@v4` en el Pipeline_JS.
+      # La versión está fijada en 3.11 para garantizar reproducibilidad.
+      # Req. 8.4 — Configuración de Python 3.11
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # ── Step 3: Instalar dependencias ─────────────────────────────────────
+      # Instala Flask, pytest y pytest-flask desde requirements.txt.
+      # En Java este paso no existe porque Maven descarga las dependencias
+      # automáticamente durante `mvn clean test`. En Python (y Node.js) la
+      # instalación es un paso explícito separado.
+      # Req. 8.4 — Instalación de dependencias con pip install -r requirements.txt
+      - name: Instalar dependencias de Python
+        run: pip install -r 01-traditional-flow/python-app/requirements.txt
+
+      # ── Step 4: Ejecutar pruebas ───────────────────────────────────────────
+      # Ejecuta todas las pruebas en la carpeta test/ usando pytest.
+      # Si TODAS las pruebas pasan → pytest retorna exit code 0 → el step
+      # pasa → el job pasa → aparece el Check_Verde ✅ en GitHub.
+      # Si AL MENOS UNA prueba falla → pytest retorna exit code distinto de 0
+      # → el step falla → el job falla → aparece el indicador de fallo ❌.
+      #
+      # PYTHONPATH: La variable de entorno PYTHONPATH agrega la carpeta src/
+      # al path de búsqueda de módulos de Python. Esto permite que los tests
+      # en test/ importen `from app import app` sin errores de ModuleNotFound.
+      # El conftest.py en python-app/ hace lo mismo para ejecuciones locales;
+      # PYTHONPATH es la solución equivalente para el entorno de CI donde
+      # pytest se invoca desde la raíz del repositorio.
+      # Req. 8.4 — Ejecución de pytest 01-traditional-flow/python-app/test/
+      # Req. 8.6 — Check_Verde cuando todas las pruebas pasan
+      # Req. 8.8 — Indicador de fallo cuando al menos una prueba falla
+      # Req. 8.10 — Comentarios educativos que resaltan similitud con Pipeline_Java
+      # Req. 8.12 — Solo CI en Fase 1, sin pasos de despliegue en AWS
+      - name: Ejecutar pruebas con pytest
+        env:
+          PYTHONPATH: 01-traditional-flow/python-app/src
+        run: pytest 01-traditional-flow/python-app/test/
+
+# =============================================================================
+# RESUMEN DEL PATRÓN CI (igual en los 4 pipelines del repositorio)
+# ─────────────────────────────────────────────────────────────────
+# 1. Trigger   → push en la carpeta de la app correspondiente
+# 2. Runner    → ubuntu-latest (máquina virtual limpia en cada ejecución)
+# 3. Checkout  → descarga el código
+# 4. Runtime   → instala el lenguaje (Java / Python / Node.js)
+# 5. Deps      → instala dependencias (pip / npm; Maven lo hace solo)
+# 6. Test      → ejecuta las pruebas (pytest / npm test / mvn test)
+# 7. Resultado → ✅ Check_Verde o ❌ Fallo visible en GitHub
+# =============================================================================

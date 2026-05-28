@@ -1,0 +1,152 @@
+/* ============================================================
+   style.css — Interfaz Web Unificada "Despliegue 101"
+   Diseño Dark Mode estilo AWS / "cozy hacker"
+   Requisitos: 2.4, 2.5, 2.6, 2.8
+   ============================================================ */
+
+/* --- Importar tipografía desde Google Fonts --- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+/* --- Reset y box-sizing global --- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* --- Fondo con degradado Dark Mode (Req. 2.4)
+       De #1a1a2e (gris muy oscuro) → #16213e (azul medianoche) → #0f3460 (violeta profundo) --- */
+body {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 55%, #0f3460 100%);
+
+  /* Tipografía Inter (Req. 2.5) */
+  font-family: 'Inter', 'Roboto', sans-serif;
+  color: #e0e6f0;
+
+  /* Centrado con Flexbox (Req. 2.5) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- Contenedor principal (.container sobre <main>) --- */
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 3rem 2rem;
+  text-align: center;
+
+  /* Tarjeta con efecto glassmorphism sutil */
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  backdrop-filter: blur(8px);
+  max-width: 640px;
+  width: 100%;
+}
+
+/* --- Encabezado H1 --- */
+.container h1 {
+  font-size: 2.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  /* Degradado de texto para el emoji y el título */
+  background: linear-gradient(90deg, #a8c8ff, #c9b8ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* --- Encabezado H2 --- */
+.container h2 {
+  font-size: 1.125rem;
+  font-weight: 400;
+  color: #94a3b8;
+  letter-spacing: 0.02em;
+}
+
+/* --- Botón / enlace (.btn sobre <a>) (Req. 2.8) --- */
+.btn {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.75rem 2rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+
+  /* Fondo con degradado del botón */
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  border: none;
+  cursor: pointer;
+
+  /* Transición suave para hover (Req. 2.8) */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* --- Hover en el botón: transform + box-shadow (Req. 2.8) --- */
+.btn:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.5);
+}
+
+.btn:active {
+  transform: translateY(0) scale(1);
+  box-shadow: none;
+}
+
+/* ============================================================
+   RESPONSIVE — Breakpoints (Req. 2.6)
+   ============================================================ */
+
+/* --- Tablet (≤ 768px) --- */
+@media (max-width: 768px) {
+  .container {
+    padding: 2.5rem 1.5rem;
+    gap: 1.25rem;
+  }
+
+  .container h1 {
+    font-size: 1.875rem;
+  }
+
+  .container h2 {
+    font-size: 1rem;
+  }
+
+  .btn {
+    padding: 0.7rem 1.75rem;
+    font-size: 0.95rem;
+  }
+}
+
+/* --- Móvil (≤ 480px) --- */
+@media (max-width: 480px) {
+  .container {
+    padding: 2rem 1.25rem;
+    gap: 1rem;
+    border-radius: 0.75rem;
+  }
+
+  .container h1 {
+    font-size: 1.5rem;
+  }
+
+  .container h2 {
+    font-size: 0.9rem;
+  }
+
+  .btn {
+    width: 100%;
+    text-align: center;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+}
