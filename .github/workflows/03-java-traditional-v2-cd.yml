@@ -165,8 +165,12 @@ jobs:
         uses: actions/download-artifact@v4.3.0
         with:
           name: java-app-jar
-          # El .jar se descargará en esta carpeta dentro del Runner
           path: ./artifact
+
+      - name: Verificar artefacto descargado
+        run: |
+          echo "Contenido artifact/:"
+          ls -lah ./artifact
 
       # -----------------------------------------------------------------------
       # Paso 2: Copiar el .jar al servidor EC2 (SCP)
@@ -196,8 +200,8 @@ jobs:
           source: "./artifact/*.jar"
           # Destino en el servidor EC2 donde se copiará el .jar
           target: "/opt/aws-despliegue101/01-traditional-flow/java-app/target/"
-          # Aplana la estructura de directorios (no crea subcarpetas)
-          strip_components: 2
+          
+          
 
       # -----------------------------------------------------------------------
       # Paso 3: Reiniciar el servicio Java en EC2 via SSH (systemd)
@@ -214,5 +218,7 @@ jobs:
           username: ${{ secrets.EC2_JAVA_USER }}
           key: ${{ secrets.EC2_JAVA_KEY }}
           script: |
+            echo "Contenido target/:"
+            ls -lah /opt/aws-despliegue101/01-traditional-flow/java-app/target/
             sudo systemctl restart java-app
             sudo systemctl status java-app --no-pager
