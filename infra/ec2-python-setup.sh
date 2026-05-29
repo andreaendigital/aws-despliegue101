@@ -14,7 +14,7 @@ set -e  # Detener el script ante cualquier error
 # Variables de configuración
 # Ajusta REPO_URL con la URL real de tu repositorio en GitHub.
 # -----------------------------------------------------------------------------
-REPO_URL="https://github.com/andrearosero/aws-despliegue101.git"
+REPO_URL="https://github.com/andreaendigital/aws-despliegue101.git"
 APP_DIR="/opt/aws-despliegue101"
 SERVICE_NAME="python-app"
 

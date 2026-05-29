@@ -5,7 +5,7 @@ from flask import Flask, send_from_directory, jsonify
 PUBLIC_DIR = os.path.join(os.path.dirname(__file__), "public")
 
 # Instancia de Flask expuesta a nivel de módulo para que pytest-flask pueda importarla
-app = Flask(__name__)
+app = Flask(__name__, static_folder="public", static_url_path="")
 
 
 @app.route("/")

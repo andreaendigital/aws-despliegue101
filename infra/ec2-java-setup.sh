@@ -18,7 +18,7 @@ set -e
 # Centralizar las variables aquí facilita adaptar el script a otros proyectos
 # o entornos sin tener que buscar valores dispersos en el código.
 # =============================================================================
-REPO_URL="https://github.com/andrearosero/aws-despliegue101.git"
+REPO_URL="https://github.com/andreaendigital/aws-despliegue101"
 APP_DIR="/opt/aws-despliegue101"
 SERVICE_NAME="java-app"
 # JAR_PATH se define en la Sección 5 tras compilar el proyecto con Maven
@@ -200,7 +200,7 @@ else
     cat > "$SERVICE_FILE" << EOF
 [Unit]
 Description=Java_App — Charla Despliegue 101 (Spring Boot)
-Documentation=https://github.com/andrearosero/aws-despliegue101
+Documentation=https://github.com/andreaendigital/aws-despliegue101
 After=network.target
 
 [Service]

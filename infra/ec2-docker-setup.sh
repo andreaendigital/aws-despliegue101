@@ -23,7 +23,7 @@ set -e
 # Centralizar las variables aquí facilita adaptar el script a otros proyectos
 # sin tener que buscar valores dispersos a lo largo del archivo.
 # =============================================================================
-REPO_URL="https://github.com/andrearosero/aws-despliegue101.git"
+REPO_URL="https://github.com/andreaendigital/aws-despliegue101.git"
 APP_DIR="/opt/aws-despliegue101"
 IMAGE_NAME="java-docker-app"
 CONTAINER_NAME="java-docker-app"
