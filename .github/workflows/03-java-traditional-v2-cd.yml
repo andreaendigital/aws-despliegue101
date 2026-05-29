@@ -200,29 +200,18 @@ jobs:
           strip_components: 2
 
       # -----------------------------------------------------------------------
-      # Paso 3: Conectarse al servidor EC2 y reiniciar la aplicación (SSH)
+      # Paso 3: Reiniciar el servicio Java en EC2 via SSH (systemd)
       # -----------------------------------------------------------------------
-      # Una vez que el .jar está en el servidor, nos conectamos por SSH para:
-      #   1. Detener el proceso Java anterior (si está corriendo)
-      #   2. Iniciar el nuevo .jar en segundo plano
+      # El servidor ya tiene el servicio `java-app` configurado por systemd
+      # (ver infra/ec2-java-setup.sh). Primero copiamos el nuevo .jar al path
+      # que systemd conoce, luego reiniciamos el servicio con una sola línea.
       #
-      # SECURITY BY DESIGN:
-      # Misma llave SSH que en el paso anterior. La conexión está cifrada
-      # de extremo a extremo. Los comandos se ejecutan en el servidor remoto
-      # como si estuviéramos en una terminal SSH.
+      # Ventajas de systemd sobre nohup/background:
+      #   - El proceso no muere cuando la sesión SSH se cierra
+      #   - Reinicio automático si la app falla (Restart=always)
+      #   - Logs accesibles con: journalctl -u java-app -f
       #
-      # `pkill -f app.jar || true`:
-      #   Busca y mata cualquier proceso Java que esté ejecutando un .jar
-      #   cuyo nombre contenga "app.jar". El `|| true` evita que el pipeline
-      #   falle si no hay ningún proceso corriendo (primera vez que se despliega).
-      #
-      # `nohup java -jar /opt/java-app/java-app-0.0.1-SNAPSHOT.jar ...`:
-      #   - nohup: el proceso continúa corriendo aunque la sesión SSH se cierre
-      #   - java -jar: ejecuta el .jar con la JVM instalada en el servidor
-      #   - --server.port=80: Spring Boot escucha en el puerto 80
-      #   - > /dev/null 2>&1: descarta stdout y stderr (los logs van a journalctl
-      #     si el servidor usa systemd, o se pueden redirigir a un archivo)
-      #   - &: ejecuta el proceso en segundo plano (background)
+      # SECURITY BY DESIGN: misma llave SSH, conexión cifrada de extremo a extremo.
       - name: Reiniciar la aplicación Java en EC2 via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -230,27 +219,11 @@ jobs:
           username: ${{ secrets.EC2_JAVA_USER }}
           key: ${{ secrets.EC2_JAVA_KEY }}
           script: |
-            # ── Detener el proceso anterior ──────────────────────────────────
-            # Busca y termina cualquier proceso Java ejecutando un .jar.
-            # `|| true` garantiza que el script no falle si no hay proceso previo.
-            echo "Deteniendo proceso Java anterior (si existe)..."
-            pkill -f app.jar || true
-            sleep 2
+            # Copiar el .jar recién subido al path que usa el servicio systemd
+            cp ~/java-app/java-app-0.0.1-SNAPSHOT.jar /opt/java-app/java-app-0.0.1-SNAPSHOT.jar
 
-            # ── Iniciar el nuevo artefacto ───────────────────────────────────
-            # Ejecuta el .jar recién copiado en segundo plano.
-            # El servidor ya tiene Java 17 instalado (ver infra/ec2-java-setup.sh).
-            echo "Iniciando nueva versión de la Java_App..."
-            setsid nohup java -jar ~/java-app/java-app-0.0.1-SNAPSHOT.jar \
-              --server.port=80 \
-              > ~/java-app/app.log 2>&1 &
-            disown
+            # Reiniciar el servicio — systemd gestiona el ciclo de vida completo
+            sudo systemctl restart java-app
 
-            # ── Verificar que el proceso arrancó ─────────────────────────────
-            sleep 5
-            if pgrep -f "java-app.*\.jar" > /dev/null; then
-              echo "✅ Java_App iniciada correctamente."
-            else
-              echo "❌ ERROR: El proceso Java no está corriendo." >&2
-              exit 1
-            fi
+            # Verificar que el servicio quedó activo
+            sudo systemctl is-active java-app
