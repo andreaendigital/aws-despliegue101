@@ -195,21 +195,16 @@ jobs:
           # Archivo a copiar: el .jar descargado en el paso anterior
           source: "./artifact/*.jar"
           # Destino en el servidor EC2 donde se copiará el .jar
-          target: "~/java-app/"
+          target: "/opt/aws-despliegue101/01-traditional-flow/java-app/target/"
           # Aplana la estructura de directorios (no crea subcarpetas)
           strip_components: 2
 
       # -----------------------------------------------------------------------
       # Paso 3: Reiniciar el servicio Java en EC2 via SSH (systemd)
       # -----------------------------------------------------------------------
-      # El servidor ya tiene el servicio `java-app` configurado por systemd
-      # (ver infra/ec2-java-setup.sh). Primero copiamos el nuevo .jar al path
-      # que systemd conoce, luego reiniciamos el servicio con una sola línea.
-      #
-      # Ventajas de systemd sobre nohup/background:
-      #   - El proceso no muere cuando la sesión SSH se cierra
-      #   - Reinicio automático si la app falla (Restart=always)
-      #   - Logs accesibles con: journalctl -u java-app -f
+      # El .jar ya está en el servidor (copiado en el paso anterior).
+      # systemd gestiona el ciclo de vida completo del proceso:
+      # reinicio limpio, logs en journalctl, arranque automático con el servidor.
       #
       # SECURITY BY DESIGN: misma llave SSH, conexión cifrada de extremo a extremo.
       - name: Reiniciar la aplicación Java en EC2 via SSH
@@ -219,11 +214,5 @@ jobs:
           username: ${{ secrets.EC2_JAVA_USER }}
           key: ${{ secrets.EC2_JAVA_KEY }}
           script: |
-            # Copiar el .jar recién subido al path que usa el servicio systemd
-            cp ~/java-app/java-app-0.0.1-SNAPSHOT.jar /opt/java-app/java-app-0.0.1-SNAPSHOT.jar
-
-            # Reiniciar el servicio — systemd gestiona el ciclo de vida completo
             sudo systemctl restart java-app
-
-            # Verificar que el servicio quedó activo
-            sudo systemctl is-active java-app
+            sudo systemctl status java-app --no-pager

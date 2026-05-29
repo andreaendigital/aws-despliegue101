@@ -1,0 +1,17 @@
+[Unit]
+Description=Java_App — Charla Despliegue 101 (Spring Boot)
+After=network.target
+
+[Service]
+User=www-data
+WorkingDirectory=/opt/aws-despliegue101/01-traditional-flow/java-app
+ExecStart=/usr/bin/java -jar /opt/aws-despliegue101/01-traditional-flow/java-app/target/java-app-0.0.1-SNAPSHOT.jar
+SuccessExitStatus=143
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=java-app
+
+[Install]
+WantedBy=multi-user.target
