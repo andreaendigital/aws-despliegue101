@@ -89,6 +89,14 @@ else
     echo "✓ Repositorio clonado en ${APP_DIR}."
 fi
 
+# CI/CD también depende de permisos UNIX correctos.
+# El pipeline de GitHub Actions se conecta como usuario 'ubuntu' via SSH/SCP
+# para copiar el .jar compilado al servidor. Si 'ubuntu' no es dueño del
+# directorio de despliegue, el SCP fallará con "Permission denied".
+# Esta línea hace que ubuntu sea dueño de todo el árbol de directorios.
+sudo chown -R ubuntu:ubuntu "${APP_DIR}"
+echo "✓ Permisos asignados a ubuntu en ${APP_DIR}."
+
 # =============================================================================
 # 6. Configurar el servicio systemd
 # =============================================================================

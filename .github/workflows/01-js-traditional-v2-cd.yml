@@ -1,0 +1,98 @@
+# =============================================================================
+# Pipeline: 01 - JS Traditional CD — Versión 2 (CI + CD)
+# Charla: Despliegue 101 — Por Andrea Rosero
+# =============================================================================
+#
+# COMPARACIÓN CON LA VERSIÓN 1:
+# La Versión 1 (01-js-traditional-cd.yml) solo ejecuta pruebas: CI puro.
+# Esta Versión 2 agrega el despliegue real en AWS EC2: CI + CD.
+#
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │  INTEGRACIÓN CONTINUA (CI)          DESPLIEGUE CONTINUO (CD)           │
+# │  ─────────────────────────          ──────────────────────────          │
+# │  Job: control-de-calidad            Job: despliegue-aws                 │
+# │  • Checkout del código              • Conectarse al EC2 por SSH         │
+# │  • Configurar Node.js 20            • git pull (actualizar código)      │
+# │  • npm install                      • npm install --production          │
+# │  • npm test (Jest + Supertest)      • pm2 restart (reiniciar app)       │
+# │                                                                         │
+# │  ✅ Si pasa → código validado       ✅ Si pasa → app actualizada en prod │
+# │  ❌ Si falla → CD no se ejecuta     ❌ Si falla → prod no se toca        │
+# └─────────────────────────────────────────────────────────────────────────┘
+#
+# SECURITY BY DESIGN — Llaves SSH:
+# El despliegue usa autenticación por llave criptográfica SSH, nunca contraseñas.
+# Las llaves se almacenan como Secrets en GitHub (Settings → Secrets → Actions)
+# y NUNCA aparecen en texto plano en los logs ni en el código.
+#
+# Secrets necesarios:
+#   EC2_JS_HOST  → IP pública o DNS de la instancia EC2 para JS
+#   EC2_JS_USER  → Usuario SSH (ej: ubuntu)
+#   EC2_JS_KEY   → Contenido de la llave privada SSH (.pem)
+# =============================================================================
+
+name: 01 - JS Traditional CD v2 (CI + CD)
+
+on:
+  push:
+    paths:
+      - '01-traditional-flow/javascript-app/**'
+
+jobs:
+
+  # ===========================================================================
+  # JOB 1: CONTROL DE CALIDAD (CI)
+  # Idéntico a la Versión 1. Si falla, el despliegue NO se ejecuta.
+  # ===========================================================================
+  control-de-calidad:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Obtener el código del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias
+        run: npm install --prefix 01-traditional-flow/javascript-app
+
+      - name: Ejecutar pruebas
+        run: npm test --prefix 01-traditional-flow/javascript-app
+
+  # ===========================================================================
+  # JOB 2: DESPLIEGUE EN AWS (CD)
+  # Solo se ejecuta si control-de-calidad pasó exitosamente.
+  # Estrategia JS: git pull en el servidor (no se compila un artefacto).
+  # ===========================================================================
+  despliegue-aws:
+    runs-on: ubuntu-latest
+    needs: control-de-calidad  # ← LÍNEA DIVISORIA CI/CD
+
+    steps:
+      # -----------------------------------------------------------------------
+      # Despliegue via SSH
+      # -----------------------------------------------------------------------
+      # SECURITY BY DESIGN: la llave privada EC2_JS_KEY nunca aparece en logs.
+      # GitHub la inyecta en memoria de forma segura durante la ejecución.
+      #
+      # Flujo en el servidor:
+      #   1. git pull  → descarga el código más reciente desde GitHub
+      #   2. npm install --production → instala solo dependencias de producción
+      #   3. pm2 restart → reinicia la app sin downtime
+      #      pm2 es un process manager para Node.js que mantiene la app viva
+      #      y la reinicia automáticamente si falla.
+      - name: Desplegar JS_App en EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_JS_HOST }}
+          username: ${{ secrets.EC2_JS_USER }}
+          key: ${{ secrets.EC2_JS_KEY }}
+          script: |
+            cd /opt/aws-despliegue101/01-traditional-flow/javascript-app
+            git pull
+            npm install --production
+            pm2 restart server.js || pm2 start src/server.js --name app-js
+            pm2 status

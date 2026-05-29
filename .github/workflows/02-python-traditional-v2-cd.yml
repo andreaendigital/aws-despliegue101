@@ -1,0 +1,103 @@
+# =============================================================================
+# Pipeline: 02 - Python Traditional CD — Versión 2 (CI + CD)
+# Charla: Despliegue 101 — Por Andrea Rosero
+# =============================================================================
+#
+# COMPARACIÓN CON LA VERSIÓN 1:
+# La Versión 1 (02-python-traditional-cd.yml) solo ejecuta pruebas: CI puro.
+# Esta Versión 2 agrega el despliegue real en AWS EC2: CI + CD.
+#
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │  INTEGRACIÓN CONTINUA (CI)          DESPLIEGUE CONTINUO (CD)           │
+# │  ─────────────────────────          ──────────────────────────          │
+# │  Job: control-de-calidad            Job: despliegue-aws                 │
+# │  • Checkout del código              • Conectarse al EC2 por SSH         │
+# │  • Configurar Python 3.11           • git pull (actualizar código)      │
+# │  • pip install -r requirements.txt  • pip install -r requirements.txt   │
+# │  • pytest                           • pkill gunicorn + reiniciar         │
+# │                                                                         │
+# │  ✅ Si pasa → código validado       ✅ Si pasa → app actualizada en prod │
+# │  ❌ Si falla → CD no se ejecuta     ❌ Si falla → prod no se toca        │
+# └─────────────────────────────────────────────────────────────────────────┘
+#
+# SECURITY BY DESIGN — Llaves SSH:
+# El despliegue usa autenticación por llave criptográfica SSH, nunca contraseñas.
+# Las llaves se almacenan como Secrets en GitHub (Settings → Secrets → Actions)
+# y NUNCA aparecen en texto plano en los logs ni en el código.
+#
+# Secrets necesarios:
+#   EC2_PYTHON_HOST  → IP pública o DNS de la instancia EC2 para Python
+#   EC2_PYTHON_USER  → Usuario SSH (ej: ubuntu)
+#   EC2_PYTHON_KEY   → Contenido de la llave privada SSH (.pem)
+# =============================================================================
+
+name: 02 - Python Traditional CD v2 (CI + CD)
+
+on:
+  push:
+    paths:
+      - '01-traditional-flow/python-app/**'
+
+jobs:
+
+  # ===========================================================================
+  # JOB 1: CONTROL DE CALIDAD (CI)
+  # Idéntico a la Versión 1. Si falla, el despliegue NO se ejecuta.
+  # ===========================================================================
+  control-de-calidad:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Obtener el código del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install -r 01-traditional-flow/python-app/requirements.txt
+
+      - name: Ejecutar pruebas
+        env:
+          PYTHONPATH: 01-traditional-flow/python-app/src
+        run: pytest 01-traditional-flow/python-app/test/
+
+  # ===========================================================================
+  # JOB 2: DESPLIEGUE EN AWS (CD)
+  # Solo se ejecuta si control-de-calidad pasó exitosamente.
+  # Estrategia Python: git pull en el servidor + reinicio de Gunicorn.
+  # ===========================================================================
+  despliegue-aws:
+    runs-on: ubuntu-latest
+    needs: control-de-calidad  # ← LÍNEA DIVISORIA CI/CD
+
+    steps:
+      # -----------------------------------------------------------------------
+      # Despliegue via SSH
+      # -----------------------------------------------------------------------
+      # SECURITY BY DESIGN: la llave privada EC2_PYTHON_KEY nunca aparece en logs.
+      # GitHub la inyecta en memoria de forma segura durante la ejecución.
+      #
+      # Flujo en el servidor:
+      #   1. git pull  → descarga el código más reciente desde GitHub
+      #   2. pip install → actualiza dependencias si requirements.txt cambió
+      #   3. pkill gunicorn || true → detiene el proceso anterior sin fallar
+      #      si no hay ninguno corriendo (primera vez o ya estaba detenido)
+      #   4. gunicorn --daemon → inicia Gunicorn en segundo plano en el puerto 80
+      #      src.app:app indica el módulo Python y la instancia Flask a servir
+      - name: Desplegar Python_App en EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_PYTHON_HOST }}
+          username: ${{ secrets.EC2_PYTHON_USER }}
+          key: ${{ secrets.EC2_PYTHON_KEY }}
+          script: |
+            cd /opt/aws-despliegue101
+            git pull
+            pip install -r 01-traditional-flow/python-app/requirements.txt
+            pkill gunicorn || true
+            sleep 2
+            cd 01-traditional-flow/python-app
+            gunicorn --bind 0.0.0.0:80 src.app:app --daemon
