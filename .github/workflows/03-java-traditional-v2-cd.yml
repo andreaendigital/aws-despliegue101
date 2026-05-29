@@ -122,7 +122,7 @@ jobs:
       # de GitHub Actions para que el siguiente job pueda descargarlo.
       # El artefacto se elimina automáticamente después de 90 días.
       - name: Guardar el .jar como artefacto del pipeline
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.3.0
         with:
           name: java-app-jar
           # Sube todos los .jar de target/ excepto los de fuentes (-sources.jar)
@@ -162,7 +162,7 @@ jobs:
       # Recupera el .jar que fue guardado por `upload-artifact` en el job
       # "control-de-calidad". Lo descarga en el directorio actual del Runner.
       - name: Descargar el .jar compilado
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v4.3.0
         with:
           name: java-app-jar
           # El .jar se descargará en esta carpeta dentro del Runner
