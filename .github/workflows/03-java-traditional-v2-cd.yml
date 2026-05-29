@@ -195,7 +195,7 @@ jobs:
           # Archivo a copiar: el .jar descargado en el paso anterior
           source: "./artifact/*.jar"
           # Destino en el servidor EC2 donde se copiará el .jar
-          target: "/opt/java-app/"
+          target: "~/java-app/"
           # Aplana la estructura de directorios (no crea subcarpetas)
           strip_components: 2
 
@@ -241,7 +241,7 @@ jobs:
             # Ejecuta el .jar recién copiado en segundo plano.
             # El servidor ya tiene Java 17 instalado (ver infra/ec2-java-setup.sh).
             echo "Iniciando nueva versión de la Java_App..."
-            nohup java -jar /opt/java-app/java-app-0.0.1-SNAPSHOT.jar \
+            nohup java -jar ~/java-app/java-app-0.0.1-SNAPSHOT.jar \
               --server.port=80 \
               > /dev/null 2>&1 &
 
