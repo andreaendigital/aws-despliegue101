@@ -200,7 +200,7 @@ jobs:
           source: "./artifact/*.jar"
           # Destino en el servidor EC2 donde se copiará el .jar
           target: "/opt/aws-despliegue101/01-traditional-flow/java-app/target/"
-          
+          strip_components: 1
           
 
       # -----------------------------------------------------------------------
