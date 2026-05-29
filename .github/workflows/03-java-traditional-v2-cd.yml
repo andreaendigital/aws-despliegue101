@@ -1,0 +1,255 @@
+# =============================================================================
+# Pipeline: 03 - Java Traditional CD — Versión 2 (CI + CD)
+# Charla: Despliegue 101 — Por Andrea Rosero
+# =============================================================================
+#
+# ¿Qué hace este pipeline y en qué se diferencia de la Versión 1?
+# ---------------------------------------------------------------
+# La Versión 1 (03-java-traditional-cd.yml) solo ejecuta pruebas: es CI puro.
+# Esta Versión 2 agrega el paso de DESPLIEGUE REAL en AWS EC2: es CI + CD.
+#
+# Mantener ambos archivos separados permite a los estudiantes comparar
+# lado a lado qué cambia cuando pasamos de "solo validar" a "validar y desplegar".
+#
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │  INTEGRACIÓN CONTINUA (CI)          DESPLIEGUE CONTINUO (CD)           │
+# │  ─────────────────────────          ──────────────────────────          │
+# │  Job: control-de-calidad            Job: despliegue-aws                 │
+# │  • Checkout del código              • Copiar el .jar a EC2 (SCP)        │
+# │  • Configurar Java 17               • Conectarse a EC2 por SSH          │
+# │  • Compilar + empaquetar (mvn)      • Detener el proceso anterior       │
+# │  • Ejecutar pruebas unitarias       • Iniciar el nuevo .jar             │
+# │                                                                         │
+# │  ✅ Si pasa → artefacto listo       ✅ Si pasa → app actualizada en prod │
+# │  ❌ Si falla → CD no se ejecuta     ❌ Si falla → prod no se toca        │
+# └─────────────────────────────────────────────────────────────────────────┘
+#
+# DIFERENCIA CLAVE DE JAVA vs JS/PYTHON:
+# ----------------------------------------
+# JavaScript y Python despliegan jalando el código fuente con `git pull`
+# directamente en el servidor. Java NO hace eso: primero COMPILA el código
+# en el Runner de GitHub Actions y genera un binario ejecutable (.jar).
+# Luego ese .jar se COPIA al servidor con SCP y se ejecuta directamente.
+#
+# Esto ilustra el concepto de "artefacto": un binario listo para ejecutar
+# que no requiere compilador ni código fuente en el servidor de producción.
+# Es más seguro (el código fuente no viaja) y más rápido (ya está compilado).
+#
+# SECURITY BY DESIGN — Llaves SSH:
+# ----------------------------------
+# El despliegue usa autenticación por llave criptográfica SSH, nunca contraseñas.
+# Las llaves se almacenan como Secrets en GitHub (Settings → Secrets → Actions)
+# y NUNCA aparecen en texto plano en los logs ni en el código.
+#
+# Secrets necesarios (configurar en GitHub → Settings → Secrets → Actions):
+#   EC2_JAVA_HOST  → IP pública o DNS de la instancia EC2 para Java
+#   EC2_JAVA_USER  → Usuario SSH (ej: ubuntu, ec2-user)
+#   EC2_JAVA_KEY   → Contenido de la llave privada SSH (.pem) en formato PEM
+# =============================================================================
+
+name: 03 - Java Traditional CD v2 (CI + CD)
+
+on:
+  push:
+    # Se activa solo cuando los cambios afectan la carpeta java-app/.
+    # Mismo filtro que la Versión 1 — cada app tiene su propio pipeline.
+    paths:
+      - '01-traditional-flow/java-app/**'
+
+jobs:
+
+  # ===========================================================================
+  # JOB 1: CONTROL DE CALIDAD (CI — Integración Continua)
+  # ===========================================================================
+  # Este job es idéntico al de la Versión 1. Su propósito es garantizar que
+  # el código funciona correctamente ANTES de intentar desplegarlo.
+  #
+  # Principio fundamental de CI/CD:
+  #   "Nunca despliegues código que no ha pasado las pruebas."
+  #
+  # Si este job falla, el job "despliegue-aws" NO se ejecuta gracias al
+  # campo `needs` que verás más abajo. El servidor de producción nunca
+  # recibe código roto.
+  # ===========================================================================
+  control-de-calidad:
+    runs-on: ubuntu-latest
+
+    steps:
+      # -----------------------------------------------------------------------
+      # Paso 1: Checkout del código
+      # -----------------------------------------------------------------------
+      # Descarga el código fuente en el Runner de GitHub Actions.
+      # Necesario para que Maven pueda leer el pom.xml y los archivos fuente.
+      - name: Obtener el código del repositorio
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # Paso 2: Configurar Java 17
+      # -----------------------------------------------------------------------
+      # Instala el JDK 17 (Temurin) en el Runner.
+      # Mismo entorno que en la Versión 1 — garantiza reproducibilidad.
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # -----------------------------------------------------------------------
+      # Paso 3: Compilar y empaquetar con Maven
+      # -----------------------------------------------------------------------
+      # DIFERENCIA CON LA VERSIÓN 1:
+      # La Versión 1 usaba `mvn clean test` (solo pruebas, sin generar .jar).
+      # Esta Versión 2 usa `mvn clean package` que:
+      #   1. Ejecuta todas las pruebas (igual que antes)
+      #   2. Si pasan, genera el .jar ejecutable en target/
+      #
+      # El .jar generado aquí es el ARTEFACTO que se desplegará en EC2.
+      # Este es el concepto central de Java: compilar una vez, ejecutar en
+      # cualquier servidor que tenga Java instalado.
+      #
+      # El archivo generado será: target/java-app-0.0.1-SNAPSHOT.jar
+      - name: Compilar, ejecutar pruebas y empaquetar
+        run: mvn -f 01-traditional-flow/java-app/pom.xml clean package
+
+      # -----------------------------------------------------------------------
+      # Paso 4: Guardar el artefacto (.jar) entre jobs
+      # -----------------------------------------------------------------------
+      # Los jobs de GitHub Actions se ejecutan en Runners independientes y
+      # aislados. El .jar generado en este job NO está disponible automáticamente
+      # en el job "despliegue-aws".
+      #
+      # `actions/upload-artifact` guarda el .jar en el almacenamiento temporal
+      # de GitHub Actions para que el siguiente job pueda descargarlo.
+      # El artefacto se elimina automáticamente después de 90 días.
+      - name: Guardar el .jar como artefacto del pipeline
+        uses: actions/upload-artifact@v4
+        with:
+          name: java-app-jar
+          # Sube todos los .jar de target/ excepto los de fuentes (-sources.jar)
+          path: 01-traditional-flow/java-app/target/*.jar
+          if-no-files-found: error
+
+  # ===========================================================================
+  # JOB 2: DESPLIEGUE EN AWS (CD — Despliegue Continuo)
+  # ===========================================================================
+  # Este job solo se ejecuta si el job "control-de-calidad" terminó con éxito.
+  # El campo `needs` crea una dependencia explícita entre los dos jobs.
+  #
+  # Flujo de despliegue Java (diferente a JS y Python):
+  #   1. Descargar el .jar generado en el job anterior
+  #   2. Copiar el .jar al servidor EC2 usando SCP (Secure Copy Protocol)
+  #   3. Conectarse al servidor por SSH
+  #   4. Detener el proceso Java anterior (si existe)
+  #   5. Iniciar el nuevo .jar en segundo plano
+  #
+  # ¿Por qué SCP y no git pull?
+  # En JS y Python, el servidor descarga el código fuente y lo ejecuta.
+  # En Java, el servidor recibe un binario ya compilado (.jar) y lo ejecuta.
+  # El servidor de producción NO necesita tener Maven ni el código fuente.
+  # ===========================================================================
+  despliegue-aws:
+    runs-on: ubuntu-latest
+
+    # `needs` garantiza que este job espera a que "control-de-calidad" termine
+    # exitosamente. Si las pruebas fallan, este job se cancela automáticamente.
+    # Esta es la línea divisoria entre CI y CD en este pipeline.
+    needs: control-de-calidad
+
+    steps:
+      # -----------------------------------------------------------------------
+      # Paso 1: Descargar el artefacto (.jar) del job anterior
+      # -----------------------------------------------------------------------
+      # Recupera el .jar que fue guardado por `upload-artifact` en el job
+      # "control-de-calidad". Lo descarga en el directorio actual del Runner.
+      - name: Descargar el .jar compilado
+        uses: actions/download-artifact@v4
+        with:
+          name: java-app-jar
+          # El .jar se descargará en esta carpeta dentro del Runner
+          path: ./artifact
+
+      # -----------------------------------------------------------------------
+      # Paso 2: Copiar el .jar al servidor EC2 (SCP)
+      # -----------------------------------------------------------------------
+      # SCP (Secure Copy Protocol) transfiere archivos de forma segura usando
+      # el protocolo SSH. Es el equivalente a `scp archivo.jar usuario@servidor:/ruta/`.
+      #
+      # SECURITY BY DESIGN:
+      # La autenticación usa la llave privada SSH almacenada en el Secret
+      # EC2_JAVA_KEY. Esta llave NUNCA aparece en los logs. GitHub la inyecta
+      # de forma segura en memoria durante la ejecución del step.
+      #
+      # La llave pública correspondiente debe estar en el archivo
+      # ~/.ssh/authorized_keys del servidor EC2.
+      #
+      # Secrets utilizados:
+      #   EC2_JAVA_HOST → IP o DNS del servidor (ej: 54.123.45.67)
+      #   EC2_JAVA_USER → Usuario SSH (ej: ubuntu)
+      #   EC2_JAVA_KEY  → Contenido completo de la llave .pem (-----BEGIN RSA PRIVATE KEY-----)
+      - name: Copiar el .jar al servidor EC2 via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_JAVA_HOST }}
+          username: ${{ secrets.EC2_JAVA_USER }}
+          key: ${{ secrets.EC2_JAVA_KEY }}
+          # Archivo a copiar: el .jar descargado en el paso anterior
+          source: "./artifact/*.jar"
+          # Destino en el servidor EC2 donde se copiará el .jar
+          target: "/opt/java-app/"
+          # Aplana la estructura de directorios (no crea subcarpetas)
+          strip_components: 2
+
+      # -----------------------------------------------------------------------
+      # Paso 3: Conectarse al servidor EC2 y reiniciar la aplicación (SSH)
+      # -----------------------------------------------------------------------
+      # Una vez que el .jar está en el servidor, nos conectamos por SSH para:
+      #   1. Detener el proceso Java anterior (si está corriendo)
+      #   2. Iniciar el nuevo .jar en segundo plano
+      #
+      # SECURITY BY DESIGN:
+      # Misma llave SSH que en el paso anterior. La conexión está cifrada
+      # de extremo a extremo. Los comandos se ejecutan en el servidor remoto
+      # como si estuviéramos en una terminal SSH.
+      #
+      # `pkill -f app.jar || true`:
+      #   Busca y mata cualquier proceso Java que esté ejecutando un .jar
+      #   cuyo nombre contenga "app.jar". El `|| true` evita que el pipeline
+      #   falle si no hay ningún proceso corriendo (primera vez que se despliega).
+      #
+      # `nohup java -jar /opt/java-app/java-app-0.0.1-SNAPSHOT.jar ...`:
+      #   - nohup: el proceso continúa corriendo aunque la sesión SSH se cierre
+      #   - java -jar: ejecuta el .jar con la JVM instalada en el servidor
+      #   - --server.port=80: Spring Boot escucha en el puerto 80
+      #   - > /dev/null 2>&1: descarta stdout y stderr (los logs van a journalctl
+      #     si el servidor usa systemd, o se pueden redirigir a un archivo)
+      #   - &: ejecuta el proceso en segundo plano (background)
+      - name: Reiniciar la aplicación Java en EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_JAVA_HOST }}
+          username: ${{ secrets.EC2_JAVA_USER }}
+          key: ${{ secrets.EC2_JAVA_KEY }}
+          script: |
+            # ── Detener el proceso anterior ──────────────────────────────────
+            # Busca y termina cualquier proceso Java ejecutando un .jar.
+            # `|| true` garantiza que el script no falle si no hay proceso previo.
+            echo "Deteniendo proceso Java anterior (si existe)..."
+            pkill -f app.jar || true
+            sleep 2
+
+            # ── Iniciar el nuevo artefacto ───────────────────────────────────
+            # Ejecuta el .jar recién copiado en segundo plano.
+            # El servidor ya tiene Java 17 instalado (ver infra/ec2-java-setup.sh).
+            echo "Iniciando nueva versión de la Java_App..."
+            nohup java -jar /opt/java-app/java-app-0.0.1-SNAPSHOT.jar \
+              --server.port=80 \
+              > /dev/null 2>&1 &
+
+            # ── Verificar que el proceso arrancó ─────────────────────────────
+            sleep 5
+            if pgrep -f "java-app.*\.jar" > /dev/null; then
+              echo "✅ Java_App iniciada correctamente."
+            else
+              echo "❌ ERROR: El proceso Java no está corriendo." >&2
+              exit 1
+            fi
