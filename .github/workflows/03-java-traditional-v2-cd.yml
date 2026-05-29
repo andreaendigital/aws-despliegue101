@@ -241,9 +241,10 @@ jobs:
             # Ejecuta el .jar recién copiado en segundo plano.
             # El servidor ya tiene Java 17 instalado (ver infra/ec2-java-setup.sh).
             echo "Iniciando nueva versión de la Java_App..."
-            nohup java -jar ~/java-app/java-app-0.0.1-SNAPSHOT.jar \
+            setsid nohup java -jar ~/java-app/java-app-0.0.1-SNAPSHOT.jar \
               --server.port=80 \
-              > /dev/null 2>&1 &
+              > ~/java-app/app.log 2>&1 &
+            disown
 
             # ── Verificar que el proceso arrancó ─────────────────────────────
             sleep 5
