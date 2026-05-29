@@ -1,7 +1,7 @@
-# =============================================================================
+# ===========================================================================
 # Pipeline: 01 - JS Traditional CD — Versión 2 (CI + CD)
 # Charla: Despliegue 101 — Por Andrea Rosero
-# =============================================================================
+# ===========================================================================
 #
 # COMPARACIÓN CON LA VERSIÓN 1:
 # La Versión 1 (01-js-traditional-cd.yml) solo ejecuta pruebas: CI puro.
@@ -29,7 +29,7 @@
 #   EC2_JS_HOST  → IP pública o DNS de la instancia EC2 para JS
 #   EC2_JS_USER  → Usuario SSH (ej: ubuntu)
 #   EC2_JS_KEY   → Contenido de la llave privada SSH (.pem)
-# =============================================================================
+# ===========================================================================
 
 name: 01 - JS Traditional CD v2 (CI + CD)
 
