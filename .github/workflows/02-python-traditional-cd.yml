@@ -24,15 +24,15 @@
 # FASE 1 — Solo CI (Integración Continua)
 # ----------------------------------------
 # Este pipeline únicamente valida la calidad del código ejecutando las
-# pruebas automatizadas. El despliegue en AWS EC2 queda para fases
-# posteriores. Ver carpeta infra/ para los scripts de infraestructura.
+# pruebas automatizadas. El despliegue en AWS EC2 queda para v2.
+# Ver carpeta infra/ para los scripts de infraestructura.
 # =============================================================================
 
 # ── Disparador del pipeline ──────────────────────────────────────────────────
 # El pipeline se activa SOLO cuando hay un push que modifica archivos dentro
 # de la carpeta python-app/. Cambios en otras carpetas (java-app, javascript-app)
 # no disparan este workflow — cada app tiene su propio pipeline independiente.
-# Req. 8.3 — Pipeline_Python se activa con push en python-app/**
+# 
 on:
   push:
     paths:
@@ -45,7 +45,7 @@ jobs:
 
   # El job se llama "control-de-calidad" — mismo nombre que en el Pipeline_Java.
   # Esta consistencia de nombres facilita comparar los pipelines en la UI de GitHub.
-  # Req. 8.4 — Job llamado control-de-calidad en ubuntu-latest
+  
   control-de-calidad:
     runs-on: ubuntu-latest  # Máquina virtual Linux proporcionada por GitHub Actions
 
@@ -56,7 +56,7 @@ jobs:
       # Sin este paso, el runner no tiene acceso a ningún archivo del repo.
       # Es SIEMPRE el primer step en cualquier pipeline — idéntico en Java,
       # Python y JavaScript.
-      # Req. 8.4 — Paso checkout del código
+      # 
       - name: Obtener el código del repositorio
         uses: actions/checkout@v4
 
@@ -65,7 +65,7 @@ jobs:
       # Equivalente a `actions/setup-java@v4` en el Pipeline_Java o
       # `actions/setup-node@v4` en el Pipeline_JS.
       # La versión está fijada en 3.11 para garantizar reproducibilidad.
-      # Req. 8.4 — Configuración de Python 3.11
+      # 
       - name: Configurar Python 3.11
         uses: actions/setup-python@v5
         with:
@@ -76,7 +76,7 @@ jobs:
       # En Java este paso no existe porque Maven descarga las dependencias
       # automáticamente durante `mvn clean test`. En Python (y Node.js) la
       # instalación es un paso explícito separado.
-      # Req. 8.4 — Instalación de dependencias con pip install -r requirements.txt
+      # 
       - name: Instalar dependencias de Python
         run: pip install -r 01-traditional-flow/python-app/requirements.txt
 
@@ -93,11 +93,7 @@ jobs:
       # El conftest.py en python-app/ hace lo mismo para ejecuciones locales;
       # PYTHONPATH es la solución equivalente para el entorno de CI donde
       # pytest se invoca desde la raíz del repositorio.
-      # Req. 8.4 — Ejecución de pytest 01-traditional-flow/python-app/test/
-      # Req. 8.6 — Check_Verde cuando todas las pruebas pasan
-      # Req. 8.8 — Indicador de fallo cuando al menos una prueba falla
-      # Req. 8.10 — Comentarios educativos que resaltan similitud con Pipeline_Java
-      # Req. 8.12 — Solo CI en Fase 1, sin pasos de despliegue en AWS
+      # 
       - name: Ejecutar pruebas con pytest
         env:
           PYTHONPATH: 01-traditional-flow/python-app/src
