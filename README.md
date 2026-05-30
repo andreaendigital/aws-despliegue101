@@ -22,7 +22,9 @@ La respuesta es **no**. El patrón de CI es universal:
 
 Este repositorio contiene tres aplicaciones web que hacen exactamente lo mismo, escritas en tres lenguajes distintos, para que puedas comparar los pipelines lado a lado y ver que la estructura es idéntica.
 
-> **Fase 1 — Solo CI:** El alcance actual cubre únicamente la validación de calidad mediante Integración Continua. El despliegue en AWS EC2 queda para fases posteriores. Los scripts en `infra/` ya están preparados y se incluyen como referencia.
+> **Fase 1 — Solo CI:** El alcance actual cubre únicamente la validación de calidad mediante Integración Continua. El despliegue en AWS EC2 queda para fases 2. 
+
+> **Fase 2 — CI + CD en EC2:** Desplegamos el código en un servidor EC2 de AWS, a través de una comunicación SSH. Se incorporan los scripts en `infra/` que ya están preparados con las instalaciones necesarias para cada Servidor según el lenguaje de programación.
 
 ---
 
@@ -216,16 +218,16 @@ El patrón es siempre el mismo. Eso es exactamente lo que esta charla quiere dem
 
 ## Fase 1 — Solo CI
 
-El alcance actual de este repositorio cubre únicamente **Integración Continua (CI)**:
+El alcance de la primera fase cubre únicamente **Integración Continua (CI)**:
 
 - ✅ Las tres aplicaciones tienen pruebas automatizadas
 - ✅ Los cuatro pipelines ejecutan esas pruebas en cada push
 - ✅ El Check Verde confirma que el código está en buen estado
-- ⏳ El despliegue automático en AWS EC2 es para **fases futuras**
+- ⏳ El despliegue automático en AWS EC2 es para **versión 2 o v2** , para lo cual se destinan workflows nuevos denominados v2 en el titulo. 
 
 ### Scripts de infraestructura (`infra/`)
 
-La carpeta `infra/` contiene scripts de shell listos para configurar instancias EC2 en AWS. Están incluidos como referencia para que puedas ver cómo se vería la automatización del despliegue, pero no se ejecutan en la Fase 1.
+La carpeta `infra/` contiene scripts de shell listos para configurar instancias EC2 en AWS, para ser integrados en la sección "Avanzados" -> "User Data", cuando se configura una máquina en AWS. Están incluidos para ser ejecutados al ejercitar la segunda fase de esta experimentación con pipelines.
 
 | Script | Qué hace |
 |--------|----------|
