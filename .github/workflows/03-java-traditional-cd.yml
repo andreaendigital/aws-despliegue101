@@ -9,7 +9,7 @@
 # que el código tiene calidad suficiente para ser desplegado.
 #
 # Fase 1 — Solo CI (Integración Continua): validación de calidad.
-# El despliegue en AWS EC2 queda para fases posteriores.
+# El despliegue en AWS EC2 queda para v2.
 # =============================================================================
 
 name: 03 - Java Traditional CD
