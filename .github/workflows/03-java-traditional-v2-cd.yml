@@ -129,9 +129,9 @@ jobs:
           path: 01-traditional-flow/java-app/target/*.jar
           if-no-files-found: error
 
-  # ===========================================================================
+  # ==========================================================================
   # JOB 2: DESPLIEGUE EN AWS (CD — Despliegue Continuo)
-  # ===========================================================================
+  # ==========================================================================
   # Este job solo se ejecuta si el job "control-de-calidad" terminó con éxito.
   # El campo `needs` crea una dependencia explícita entre los dos jobs.
   #
@@ -146,7 +146,7 @@ jobs:
   # En JS y Python, el servidor descarga el código fuente y lo ejecuta.
   # En Java, el servidor recibe un binario ya compilado (.jar) y lo ejecuta.
   # El servidor de producción NO necesita tener Maven ni el código fuente.
-  # ===========================================================================
+  # ==========================================================================
   despliegue-aws:
     runs-on: ubuntu-latest
 
