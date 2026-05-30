@@ -153,8 +153,7 @@ class ApplicationTests {
      *   - El campo "status" con valor "UP"
      *   - El campo "charla" (con cualquier valor no nulo)
      *
-     * Este test valida el contrato del Health_Endpoint definido en el
-     * Requisito 5.3: la respuesta debe tener exactamente estos dos campos.
+     * Este test valida el contrato del Health_Endpoint 
      *
      * ¿Por qué importa el campo "status": "UP"?
      * Los sistemas de monitoreo (como AWS ELB health checks) leen este campo
