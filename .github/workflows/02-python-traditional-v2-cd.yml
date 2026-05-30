@@ -29,7 +29,7 @@
 #   EC2_PYTHON_HOST  → IP pública o DNS de la instancia EC2 para Python
 #   EC2_PYTHON_USER  → Usuario SSH (ej: ubuntu)
 #   EC2_PYTHON_KEY   → Contenido de la llave privada SSH (.pem)
-# =============================================================================
+# ===========================================================================
 
 name: 02 - Python Traditional CD v2 (CI + CD)
 
@@ -40,10 +40,10 @@ on:
 
 jobs:
 
-  # ===========================================================================
+  # =========================================================================
   # JOB 1: CONTROL DE CALIDAD (CI)
   # Idéntico a la Versión 1. Si falla, el despliegue NO se ejecuta.
-  # ===========================================================================
+  # =========================================================================
   control-de-calidad:
     runs-on: ubuntu-latest
 
